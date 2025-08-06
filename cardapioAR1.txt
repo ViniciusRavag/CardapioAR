@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Encasa - Cardápio Digital AR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff6b35;
+            --secondary-color: #f7931e;
+            --text-dark: #333;
+            --text-light: #777;
+            --bg-light: #f8f8f8;
+            --white: #fff;
+            --border-color: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        /* Estilo para congelar o scroll quando a AR está ativa */
+        body.ar-active {
+            overflow: hidden;
+        }
+
+        /* Abas de Categoria */
+        .category-tabs {
+            display: flex;
+            overflow-x: auto;
+            padding: 15px 20px 10px;
+            gap: 10px;
+            background: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            scrollbar-width: none; /* Firefox */
+        }
+
+        .category-tabs::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        .category-tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #f1f1f1;
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .category-tab.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: var(--white);
+            border-color: var(--primary-color);
+        }
+
+        /* Grid de Produtos */
+        .products-container {
+            padding: 20px 15px;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .product-card {
+            background: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 120px;
+            background: #eee;
+        }
+
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .product-info {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .product-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            flex-grow: 1;
+        }
+
+        .product-footer {
+            margin-top: auto;
+        }
+
+        /* Botão de Realidade Aumentada */
+        .ar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(255, 107, 53, 0.3);
+        }
+
+        .ar-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 107, 53, 0.4);
+        }
+
+        .ar-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* --- Interface de Realidade Aumentada --- */
+        .ar-view-container {
+            position: fixed;
+            inset: 0; /* top, right, bottom, left */
+            background: #000;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .ar-view-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #ar-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #ar-overlay-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 80%;
+            max-height: 75%;
+            object-fit: contain;
+            /* Sombra para dar profundidade */
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));
+            pointer-events: none;
+            transition: transform 0.3s ease;
+        }
+        
+        #ar-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .ar-ui-info {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .ar-ui-info h3 {
+            margin-bottom: 5px;
+        }
+
+        .ar-ui-info p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        #ar-error {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            background: #111;
+            display: none; /* Escondido por padrão */
+        }
+        #ar-error h3 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        #ar-error p {
+            font-size: 0.9rem;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="category-tabs">
+        <div class="category-tab active" onclick="filterCategory('all', this)">Todos</div>
+        <div class="category-tab" onclick="filterCategory('Entrada', this)">Entradas</div>
+        <div class="category-tab" onclick="filterCategory('Principal', this)">Principais</div>
+        <div class="category-tab" onclick="filterCategory('Sobremesa', this)">Sobremesas</div>
+        <div class="category-tab" onclick="filterCategory('Combo', this)">Combos</div>
+    </div>
+
+    <div class="products-container">
+        <div class="products-grid" id="productsGrid"></div>
+    </div>
+
+    <!-- Container da Visualização em Realidade Aumentada -->
+    <div id="ar-view" class="ar-view-container">
+        <video id="ar-video" playsinline autoplay muted></video>
+        <img id="ar-overlay-image" src="" alt="Imagem do prato em AR">
+        
+        <div id="ar-error">
+            <h3 id="ar-error-title"></h3>
+            <p id="ar-error-message"></p>
+        </div>
+
+        <div class="ar-ui-info">
+            <h3 id="ar-product-name"></h3>
+            <p>Mova seu celular para ver o prato no seu ambiente.</p>
+        </div>
+        
+        <button id="ar-close-btn" onclick="closeArView()">&times;</button>
+    </div>
+
+
+    <script>
+        // --- DADOS DOS PRODUTOS ---
+        // Adicionei uma propriedade 'pngImage' para a imagem de overlay em AR.
+        // O ideal é usar imagens PNG com fundo transparente.
+        const PRODUCTS = [
+            { id: 1, name: "Nachos Chilli", price: 28.68, image: "https://static.ifood-static.com.br/image/upload/t_medium/pratos/7d1ebf3c-fc6a-4235-821f-1860bccaffad/202109132014_1224_i.jpg", pngImage: "https://i.imgur.com/GSoaWfA.png", category: "Entrada" },
+            { id: 2, name: "2 Tacos Mexican Style", price: 21.60, image: "https://static.ifood-static.com.br/image/upload/t_medium/pratos/7d1ebf3c-fc6a-4235-821f-1860bccaffad/202003212202_CWSo_t.jpg", pngImage: "https://i.imgur.com/8aVu3eU.png", category: "Principal" },
+            { id: 3, name: "2 Burritos Tradicionais", price: 29.50, image: "https://anamariabrogui.com.br/assets/uploads/receitas/fotos/usuario-2847-e7b65a5775641aa780fa2b34b5a624e4.jpg", pngImage: "https://i.imgur.com/6aAsfH6.png", category: "Principal" },
+            { id: 4, name: "Nachos Frango", price: 28.68, image: "https://assets.tmecosys.com/image/upload/t_web_rdp_recipe_584x480_1_5x/img/recipe/ras/Assets/09ADC2F0-6DCA-4C04-ABDC-25F9E771DA4E/Derivates/AD23C769-B1FA-486D-9CE5-38B7E7E106BC.jpg", pngImage: "https://i.imgur.com/GSoaWfA.png", category: "Entrada" },
+            { id: 5, name: "Combo Guadalupe", price: 135.80, image: "https://static.ifood-static.com.br/image/upload/t_medium/pratos/7d1ebf3c-fc6a-4235-821f-1860bccaffad/201903142151_comb.jpeg", pngImage: "https://i.imgur.com/qLw2kG2.png", category: "Combo" },
+            { id: 6, name: "Batata Frita", price: 15.00, image: "https://images.unsplash.com/photo-1541592106381-b65b60662604?auto=format&fit=crop&w=435", pngImage: "https://i.imgur.com/sC4n5dC.png", category: "Entrada" },
+            { id: 7, name: "Mini Churros", price: 12.00, image: "https://www.portonovoalimentos.com.br/medias/news/depositphotos-406675082-xl.jpg?w=600&h=auto&fit=fit&crop=center", pngImage: "https://i.imgur.com/4zYgY4D.png", category: "Sobremesa" }
+        ];
+
+        // --- ESTADO DA APLICAÇÃO ---
+        let currentCategory = 'all';
+        let currentStream = null; // Armazena o stream da câmera para poder pará-lo depois
+
+        // --- ELEMENTOS DO DOM ---
+        const arView = document.getElementById('ar-view');
+        const arVideo = document.getElementById('ar-video');
+        const arOverlayImage = document.getElementById('ar-overlay-image');
+        const arProductName = document.getElementById('ar-product-name');
+        const arError = document.getElementById('ar-error');
+        const arErrorTitle = document.getElementById('ar-error-title');
+        const arErrorMessage = document.getElementById('ar-error-message');
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProducts();
+        });
+
+        // --- RENDERIZAÇÃO DOS PRODUTOS ---
+        function renderProducts() {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = '';
+            const filtered = PRODUCTS.filter(p => currentCategory === 'all' || p.category === currentCategory);
+            
+            filtered.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                
+                card.innerHTML = `
+                    <div class="product-image">
+                        <img src="${product.image}" alt="${product.name}" loading="lazy" onerror="this.src='https://placehold.co/400x300/eee/333?text=Prato'">
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-footer">
+                            <button class="ar-btn" onclick="openArView(${product.id})">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.776 48.776 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                                </svg>
+                                <span>Ver em AR</span>
+                            </button>
+                        </div>
+                    </div>`;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterCategory(category, element) {
+            currentCategory = category;
+            document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active'));
+            element.classList.add('active');
+            renderProducts();
+        }
+
+        // --- LÓGICA DA REALIDADE AUMENTADA ---
+
+        function showError(title, message) {
+            arVideo.style.display = 'none';
+            arError.style.display = 'flex';
+            arErrorTitle.textContent = title;
+            arErrorMessage.textContent = message;
+        }
+
+        async function openArView(productId) {
+            const product = PRODUCTS.find(p => p.id === productId);
+            if (!product) return;
+
+            // Prepara a interface de AR
+            document.body.classList.add('ar-active');
+            arProductName.textContent = product.name;
+            arOverlayImage.src = product.pngImage;
+            arView.classList.add('visible');
+            arVideo.style.display = 'block';
+            arError.style.display = 'none';
+
+            // Verifica se o navegador suporta a API
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError('Função não suportada', 'Seu navegador não suporta o acesso à câmera. Tente usar um navegador moderno como Chrome ou Safari.');
+                return;
+            }
+
+            try {
+                // Pede permissão e inicia a câmera traseira
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment' // 'environment' para traseira, 'user' para frontal
+                    }
+                });
+                
+                currentStream = stream;
+                arVideo.srcObject = stream;
+
+            } catch (err) {
+                // Trata erros comuns de permissão
+                console.error("Erro ao acessar a câmera: ", err);
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    showError('Acesso negado', 'Você precisa permitir o acesso à câmera para usar esta função. Verifique as permissões do site nas configurações do seu navegador.');
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    showError('Câmera não encontrada', 'Não foi possível encontrar uma câmera traseira no seu dispositivo.');
+                } else {
+                    showError('Ocorreu um erro', 'Não foi possível iniciar a câmera. Por favor, tente novamente.');
+                }
+            }
+        }
+
+        function closeArView() {
+            // Para o stream da câmera para economizar bateria e preservar a privacidade
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => {
+                    track.stop();
+                });
+            }
+            arVideo.srcObject = null;
+            currentStream = null;
+
+            // Esconde a interface de AR
+            arView.classList.remove('visible');
+            document.body.classList.remove('ar-active');
+        }
+
+    </script>
+</body>
+</html>
